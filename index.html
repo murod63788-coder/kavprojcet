@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#06061f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="KAV Defender — shoot down anti-$KAV enemies (bears, FUD, whales) and protect the moon mission. Unlock outfits, climb the leaderboard. Mobile-friendly." />
+  <title>KAV · Defender — A Small Alien With A Big Tomorrow 👽💜</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%BD%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%BD%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- === MAIN GAME CONTAINER === -->
+  <div id="game" class="game-container">
+    <!-- Background layers (managed by JS) -->
+    <div id="bg-gradient" class="bg-layer"></div>
+
+    <!-- Parallax star layers (3 depths) -->
+    <div id="bg-parallax-far" class="bg-layer parallax-layer"></div>
+    <div id="bg-parallax-mid" class="bg-layer parallax-layer"></div>
+    <div id="bg-parallax-near" class="bg-layer parallax-layer"></div>
+
+    <!-- Animated nebula clouds (CSS-animated radial gradient blobs) -->
+    <div id="bg-nebula" class="bg-layer nebula-layer">
+      <div class="nebula-cloud nebula-1"></div>
+      <div class="nebula-cloud nebula-2"></div>
+      <div class="nebula-cloud nebula-3"></div>
+    </div>
+
+    <!-- Aurora glow at top and bottom -->
+    <div class="aurora-top"></div>
+    <div class="aurora-bottom"></div>
+
+    <!-- Comets (occasional) -->
+    <div id="bg-comets" class="bg-layer comets-layer"></div>
+
+    <!-- Planets -->
+    <div id="bg-planets" class="bg-layer"></div>
+
+    <!-- === Particle canvas (high-performance) === -->
+    <canvas id="particles-canvas" class="particles-canvas"></canvas>
+
+    <!-- === Falling items layer === -->
+    <div id="items-layer" class="items-layer"></div>
+
+    <!-- === Floating texts layer === -->
+    <div id="texts-layer" class="texts-layer"></div>
+
+    <!-- === KAV character === -->
+    <div id="kav-character" class="kav-character"></div>
+
+    <!-- === Combo trail (behind KAV) === -->
+    <div id="combo-trail" class="combo-trail"></div>
+
+    <!-- === Magnet visual lines (drawn via canvas) === -->
+    <canvas id="magnet-canvas" class="magnet-canvas"></canvas>
+
+    <!-- === Speed lines (visible when speed > 2x) === -->
+    <div id="speed-lines" class="speed-lines"></div>
+
+    <!-- === Damage flash overlay (red overlay when hit) === -->
+    <div id="damage-flash" class="damage-flash"></div>
+
+    <!-- === Level-up burst container === -->
+    <div id="levelup-burst" class="levelup-burst"></div>
+
+    <!-- === HUD (heads-up display) === -->
+    <div id="hud" class="hud hidden">
+      <!-- Top-left: Score + Level + Outfit + Wave -->
+      <div class="hud-left">
+        <div class="hud-card hud-score">
+          <div class="hud-label">SCORE</div>
+          <div class="hud-value" id="score-display">0</div>
+          <!-- Combo bar fill (under score) -->
+          <div class="combo-bar-wrap">
+            <div class="combo-bar-fill" id="combo-bar-fill"></div>
+          </div>
+        </div>
+        <div class="hud-row">
+          <div class="hud-chip" id="level-chip">LVL <b>1</b></div>
+          <div class="hud-chip purple" id="outfit-chip">CIVILIAN</div>
+          <div class="hud-chip cyan" id="wave-chip">WAVE 1</div>
+        </div>
+        <div class="hud-row">
+          <div class="hud-chip yellow" id="speed-chip">⚡ x1.0</div>
+        </div>
+      </div>
+
+      <!-- Top-center: Combo badge -->
+      <div id="combo-badge" class="combo-badge hidden">2x COMBO!</div>
+
+      <!-- Top-right: Lives + Powers + Pause -->
+      <div class="hud-right">
+        <div class="hud-card lives-display" id="lives-display">
+          <span class="life">💜</span><span class="life">💜</span><span class="life">💜</span>
+        </div>
+        <div id="power-bar" class="power-bar"></div>
+        <button id="pause-btn" class="hud-btn" aria-label="Pause">⏸ PAUSE</button>
+      </div>
+    </div>
+
+    <!-- === Boss health bar (shown during boss waves) === -->
+    <div id="boss-bar" class="boss-bar hidden">
+      <div class="boss-label">⚠ BOSS HAZARD · ☄️</div>
+      <div class="boss-health-wrap">
+        <div class="boss-health-fill" id="boss-health-fill"></div>
+      </div>
+    </div>
+
+    <!-- === Achievement popup === -->
+    <div id="achievement-popup" class="achievement-popup hidden">
+      <span class="ach-emoji">🏆</span>
+      <div>
+        <div class="ach-label">// ACHIEVEMENT UNLOCKED</div>
+        <div class="ach-title">FIRST CATCH</div>
+        <div class="ach-desc">caught your first $KAV</div>
+      </div>
+    </div>
+
+    <!-- === Outfit unlock popup === -->
+    <div id="outfit-popup" class="outfit-popup hidden">
+      <div class="outfit-label">// NEW OUTFIT UNLOCKED</div>
+      <div id="outfit-preview" class="outfit-preview"></div>
+      <div class="outfit-name">ASTRO KAV</div>
+      <div class="outfit-desc">suit up · moon mission active</div>
+    </div>
+
+    <!-- === Wave announcement === -->
+    <div id="wave-announce" class="wave-announce hidden">
+      <div class="wave-label" id="wave-announce-label">// GALAXY WAVE</div>
+      <div class="wave-number" id="wave-announce-number">2</div>
+      <div class="wave-tagline" id="wave-announce-tagline">faster · denser · brighter</div>
+    </div>
+
+    <!-- === Bottom hint === -->
+    <div id="bottom-hint" class="bottom-hint hidden">
+      move to aim · auto-fire ON · space pause · M mute
+    </div>
+
+    <!-- === Mute button (always visible) === -->
+    <button id="mute-btn" class="mute-btn" aria-label="Toggle sound">🔊</button>
+
+    <!-- === Mobile touch controls (left/right buttons, only visible on touch devices) === -->
+    <div id="touch-controls" class="touch-controls hidden">
+      <button id="touch-left" class="touch-btn touch-left" aria-label="Move left">◀</button>
+      <button id="touch-right" class="touch-btn touch-right" aria-label="Move right">▶</button>
+    </div>
+
+    <!-- === Touch zone indicators (visible briefly when touching during gameplay on mobile) === -->
+    <div id="touch-zone-left" class="touch-zone touch-zone-left"></div>
+    <div id="touch-zone-right" class="touch-zone touch-zone-right"></div>
+
+    <!-- === First-time tutorial overlay (auto-dismiss on first interaction) === -->
+    <div id="tutorial" class="tutorial hidden">
+      <div class="tutorial-card">
+        <div class="tutorial-icon">👽</div>
+        <h2 class="tutorial-title">WELCOME, KAV</h2>
+        <p class="tutorial-text" id="tutorial-text">Move KAV left/right to aim. Auto-fire is ON. Destroy enemies before they reach you!</p>
+        <div class="tutorial-controls" id="tutorial-controls">
+          <div class="tutorial-control">📱 <span>Touch left/right</span></div>
+          <div class="tutorial-control">⌨️ <span>← → / A D</span></div>
+          <div class="tutorial-control">🖱️ <span>Mouse move</span></div>
+        </div>
+        <button id="tutorial-close" class="tutorial-close-btn">▶ GOT IT</button>
+      </div>
+    </div>
+
+    <!-- === MENU SCREEN === -->
+    <div id="screen-menu" class="screen menu-screen">
+      <div class="menu-kav" id="menu-kav"></div>
+      <h1 class="menu-title">$KAV DEFENDER</h1>
+      <p class="menu-subtitle">shoot the FUD · protect the moon mission</p>
+
+      <!-- Mode selector -->
+      <div class="mode-selector">
+        <button class="mode-btn active" data-mode="classic">🎯 CLASSIC</button>
+        <button class="mode-btn" data-mode="daily">📅 DAILY</button>
+      </div>
+
+      <!-- Difficulty selector -->
+      <div class="difficulty-selector">
+        <span class="selector-label">DIFFICULTY</span>
+        <div class="diff-buttons">
+          <button class="diff-btn" data-diff="easy">EASY</button>
+          <button class="diff-btn active" data-diff="normal">NORMAL</button>
+          <button class="diff-btn" data-diff="hard">HARD</button>
+          <button class="diff-btn" data-diff="insane">INSANE</button>
+        </div>
+      </div>
+
+      <!-- Items guide -->
+      <div class="items-guide">
+        <div class="guide-section-label">🔫 ENEMIES (shoot to destroy)</div>
+        <div class="guide-item"><span>🐻</span> bear <b class="c-yellow">+10</b></div>
+        <div class="guide-item"><span>📉</span> FUD <b class="c-yellow2">+15</b></div>
+        <div class="guide-item"><span>💩</span> shitcoin <b class="c-orange">+20</b></div>
+        <div class="guide-item"><span>🤡</span> clown <b class="c-pink">+30</b></div>
+        <div class="guide-item"><span>📊</span> red candle <b class="c-red2">+25</b></div>
+        <div class="guide-item"><span>🐋</span> whale <b class="c-cyan">+50</b></div>
+        <div class="guide-item"><span>☄️</span> asteroid <b class="c-yellow3">+15</b></div>
+
+        <div class="guide-section-label">⚡ POWER-UPS (shoot to activate)</div>
+        <div class="guide-item"><span>🛡️</span> shield <b class="c-cyan2">6s</b></div>
+        <div class="guide-item"><span>⏱️</span> slowmo <b class="c-green">4s</b></div>
+        <div class="guide-item"><span>⚡</span> triple-shot <b class="c-yellow3">8s</b></div>
+        <div class="guide-item"><span>🔥</span> rapid fire <b class="c-orange">6s</b></div>
+        <div class="guide-item"><span>💥</span> bomb <b class="c-red3">clear</b></div>
+        <div class="guide-item"><span>🌈</span> rainbow <b class="c-rainbow">5s</b></div>
+        <div class="guide-item"><span>🍀</span> clover <b class="c-green2">lucky</b></div>
+
+        <div class="guide-section-label">💀 BOSSES</div>
+        <div class="guide-item"><span>💀</span> boss whale <b class="c-red3">+200</b></div>
+      </div>
+
+      <!-- Outfit unlock preview -->
+      <div class="outfit-preview-row">
+        <div class="outfit-preview-label">// OUTFIT UNLOCKS</div>
+        <div class="outfit-preview-grid">
+          <div class="outfit-preview-item" data-outfit="default">
+            <div class="outfit-mini-preview" data-outfit-render="default"></div>
+            <div class="outfit-mini-name">CIVILIAN</div>
+            <div class="outfit-mini-pts">0pt</div>
+          </div>
+          <div class="outfit-preview-item" data-outfit="astronaut">
+            <div class="outfit-mini-preview" data-outfit-render="astronaut"></div>
+            <div class="outfit-mini-name">ASTRO</div>
+            <div class="outfit-mini-pts">100pt</div>
+          </div>
+          <div class="outfit-preview-item" data-outfit="diamond">
+            <div class="outfit-mini-preview" data-outfit-render="diamond"></div>
+            <div class="outfit-mini-name">DIAMOND</div>
+            <div class="outfit-mini-pts">250pt</div>
+          </div>
+          <div class="outfit-preview-item" data-outfit="royal">
+            <div class="outfit-mini-preview" data-outfit-render="royal"></div>
+            <div class="outfit-mini-name">ROYAL</div>
+            <div class="outfit-mini-pts">500pt</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats badges -->
+      <div class="stats-badges">
+        <div class="badge yellow" id="badge-best">🏆 BEST: 0</div>
+        <div class="badge purple" id="badge-ach">🎯 0/16 ACHIEVEMENTS</div>
+        <button class="badge cyan" id="badge-leaderboard">📊 LEADERBOARD</button>
+      </div>
+
+      <!-- Daily challenge info (hidden by default) -->
+      <div class="daily-info hidden" id="daily-info">
+        <div class="daily-date" id="daily-date">// DATE</div>
+        <div class="daily-stats" id="daily-stats"></div>
+      </div>
+
+      <!-- Play button -->
+      <button id="play-btn" class="play-btn">▶ PLAY</button>
+      <p class="menu-hint">move to aim · auto-fire ON · space pause · M mute</p>
+    </div>
+
+    <!-- === PAUSE OVERLAY === -->
+    <div id="screen-pause" class="screen pause-screen hidden">
+      <h2 class="pause-title">PAUSED</h2>
+      <div class="pause-buttons">
+        <button id="resume-btn" class="btn-primary">▶ RESUME</button>
+        <button id="restart-btn" class="btn-secondary">↻ RESTART</button>
+        <button id="quit-btn" class="btn-secondary">⏏ QUIT TO MENU</button>
+      </div>
+    </div>
+
+    <!-- === GAME OVER === -->
+    <div id="screen-gameover" class="screen gameover-screen hidden">
+      <div id="gameover-kav" class="gameover-kav"></div>
+      <h2 class="gameover-title">GAME OVER</h2>
+      <p class="gameover-sub">// market dumped — you got rekt</p>
+
+      <div class="gameover-stats">
+        <div class="stat-card">
+          <div class="stat-label">SCORE</div>
+          <div class="stat-value yellow" id="final-score">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">BEST</div>
+          <div class="stat-value cyan" id="final-best">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">KILLS</div>
+          <div class="stat-value" id="final-catches">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">MAX COMBO</div>
+          <div class="stat-value" id="final-combo">0x</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">WAVE</div>
+          <div class="stat-value" id="final-wave">1</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">SPEED</div>
+          <div class="stat-value" id="final-speed">x1.0</div>
+        </div>
+      </div>
+
+      <div id="new-high-badge" class="new-high-badge hidden">🏆 NEW HIGH SCORE!</div>
+
+      <div class="gameover-buttons">
+        <button id="play-again-btn" class="btn-primary">▶ PLAY AGAIN</button>
+        <button id="share-btn" class="btn-secondary">📤 SHARE SCORE</button>
+        <button id="view-leaderboard-btn" class="btn-secondary">📊 LEADERBOARD</button>
+        <button id="back-to-menu-btn" class="btn-secondary">⏏ MENU</button>
+      </div>
+    </div>
+
+    <!-- === NAME ENTRY === -->
+    <div id="screen-nameentry" class="screen nameentry-screen hidden">
+      <div class="nameentry-emoji">🎉</div>
+      <h2 class="nameentry-title">LEADERBOARD QUALIFIED!</h2>
+      <p class="nameentry-info" id="nameentry-info">// score 0 · level 1 · wave 1</p>
+      <label class="nameentry-label" for="name-input">YOUR ALIEN NAME</label>
+      <input type="text" id="name-input" class="name-input" placeholder="ANON" maxlength="12" autocomplete="off" />
+      <p class="nameentry-hint">// max 12 chars · enter to submit</p>
+      <button id="save-name-btn" class="btn-primary">✓ SAVE & VIEW LEADERBOARD</button>
+    </div>
+
+    <!-- === LEADERBOARD === -->
+    <div id="screen-leaderboard" class="screen leaderboard-screen hidden">
+      <h2 class="leaderboard-title">🏆 HALL OF KAV</h2>
+      <p class="leaderboard-sub">// top 5 alien catchers</p>
+
+      <div class="leaderboard-tabs" id="leaderboard-tabs">
+        <button class="lb-tab active" data-lb-diff="normal">NORMAL</button>
+        <button class="lb-tab" data-lb-diff="easy">EASY</button>
+        <button class="lb-tab" data-lb-diff="hard">HARD</button>
+        <button class="lb-tab" data-lb-diff="insane">INSANE</button>
+      </div>
+
+      <div id="leaderboard-entries" class="leaderboard-entries"></div>
+
+      <div class="achievements-section">
+        <p class="ach-section-label">// ACHIEVEMENTS <span id="ach-count">0</span> / 16</p>
+        <div id="ach-grid" class="ach-grid"></div>
+      </div>
+
+      <button id="lb-back-btn" class="btn-primary">← BACK</button>
+    </div>
+
+    <!-- === SHARE SCORE MODAL === -->
+    <div id="screen-share" class="screen share-screen hidden">
+      <h2 class="share-title">📤 SHARE YOUR SCORE</h2>
+      <div class="share-card-wrapper">
+        <canvas id="share-canvas" width="600" height="320"></canvas>
+      </div>
+      <div class="share-buttons">
+        <button id="copy-share-btn" class="btn-primary">📋 COPY IMAGE</button>
+        <button id="download-share-btn" class="btn-secondary">⬇ DOWNLOAD PNG</button>
+        <button id="tweet-share-btn" class="btn-secondary">🐦 POST TO X</button>
+        <button id="close-share-btn" class="btn-secondary">✕ CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- === Scripts (loaded in order, no modules to avoid file:// CORS issues) === -->
+  <script src="kav-character.js"></script>
+  <script src="kav-sfx.js"></script>
+  <script src="kav-game.js"></script>
+</body>
+</html>
